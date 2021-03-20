@@ -1,4 +1,88 @@
+turtles-own [energy manpower target-x target-y isInRetreat isWet isInRout]
+breed [unions union]
+breed [confeds confed]
+globals [PctReserve]
 
+
+
+to setup
+  clear-all
+  setup-patches
+  setup-turtles
+  reset-ticks
+
+end
+
+to setup-patches
+  ask patches [ set pcolor green ]
+end
+
+to setup-turtles
+  let tot 0
+  set tot  (PctBridge + PctCreek)
+  set PctReserve  100 -(PctBridge + PctCreek)
+  if tot > 100
+  [
+    show "Totals must be less then 100!!!!"
+    error e
+  ]
+
+  let init-confed-y (list 1 2 3 4 5)
+  let init-confed-x (list 0 -1 -2 -3 -5)
+  let init-union-y (list -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10)
+  let init-union-x (list 0 2 3 4 5 6 7 8 9 10)
+
+
+  set-default-shape unions "nato freindly"
+  set-default-shape confeds "nato enemy"
+  create-unions 10  [
+    set energy 100
+    let remove-index random length init-union-y
+    set ycor item remove-index init-union-y
+    set init-union-y remove-item remove-index init-union-y
+    let remove-indexx random length init-union-x
+    set xcor item remove-indexx init-union-x
+    set init-union-x remove-item remove-indexx init-union-x
+    set  target-x random-xcor
+    set  target-y random-ycor
+  ]
+
+  create-confeds 5 [
+    set energy 100
+    let remove-index random length init-confed-y
+    set ycor item remove-index init-confed-y
+    set init-confed-y remove-item remove-index init-confed-y
+    let remove-indexx random length init-confed-x
+    set xcor item remove-indexx init-confed-x
+    set init-confed-x remove-item remove-indexx init-confed-x
+    set target-x random-xcor
+  ]
+
+
+
+
+
+end
+
+to go
+  if ticks >= 500 [ stop ]
+  move-turtles
+  tick
+end
+
+
+
+
+
+to move-turtles
+  ask turtles [
+
+    right 45
+    forward 1
+    set energy energy - 1
+  ]
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -53,6 +137,70 @@ Batle Of Antietam - Burnsides Bridge\n
 11
 0.0
 1
+
+BUTTON
+44
+179
+107
+212
+NIL
+go\n
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+75
+242
+138
+275
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+11
+309
+183
+342
+PctBridge
+PctBridge
+0
+100
+49.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+13
+363
+185
+396
+PctCreek
+PctCreek
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -256,6 +404,25 @@ line half
 true
 0
 Line -7500403 true 150 0 150 150
+
+nato enemy
+false
+14
+Rectangle -1 true false 15 15 285 285
+Line -16777216 true 210 90 90 210
+Line -16777216 true 90 90 210 210
+Polygon -2674135 false false 150 30 30 150 150 270 270 150 150 30
+Line -16777216 true 150 30 150 0
+
+nato freindly
+false
+14
+Rectangle -1 true false 0 45 315 255
+Line -16777216 true 285 60 15 240
+Line -16777216 true 15 60 285 240
+Rectangle -13345367 false false 15 60 285 240
+Line -16777216 true 135 60 135 45
+Line -16777216 true 165 60 165 45
 
 pentagon
 false
