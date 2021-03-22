@@ -1,12 +1,16 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount]
 breed [unions union]
 breed [confeds confed]
-globals [PctReserve UnionRetreatPatch ConfedRetreatPatch]
+globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon ]
+
+patches-own [UnionPreperationPatch IsWater]
+
 
 
 
 to setup
   clear-all
+
   setup-patches
   setup-turtles
   reset-ticks
@@ -14,7 +18,16 @@ to setup
 end
 
 to setup-patches
-  ask patches [ set pcolor green ]
+  set UnionRetreatPatch patch max-pxcor min-pycor
+  set ConfedRetreatPatch patch min-pxcor max-pycor
+  ask patches  [ set pcolor green
+    set IsWater 0
+    if (pxcor < 5) and (pxcor > -5) and (pycor <= pxcor - 2) and (pycor > pxcor - 4)
+    [
+      set UnionPreperationPatch  1
+     set pcolor black
+    ]
+  ]
 end
 
 to setup-turtles
@@ -27,8 +40,8 @@ to setup-turtles
     error e
   ]
 
-  let init-confed-y (list 1 2 3 4 5)
-  let init-confed-x (list 0 -1 -2 -3 -5)
+  let init-confed-y (list 10 9 8 7 6)
+  let init-confed-x (list -7 -6 -4 -3 -2)
   let init-union-y (list -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10)
   let init-union-x (list 0 2 3 4 5 6 7 8 9 10)
 
@@ -37,6 +50,7 @@ to setup-turtles
   set-default-shape confeds "nato enemy"
   create-unions 10  [
     set energy 100
+    set manpower 10000
     let remove-index random length init-union-y
     set ycor item remove-index init-union-y
     set init-union-y remove-item remove-index init-union-y
@@ -44,16 +58,21 @@ to setup-turtles
     set xcor item remove-indexx init-union-x
     set init-union-x remove-item remove-indexx init-union-x
 
-    let target-index random length init-confed-y
-    let target-y item target-index init-confed-y
-    let target-x item target-index init-confed-x
-    let tarpatch patch target-x target-y
-    set targetPatch tarpatch
+    ;;let target-index random length init-confed-y
+    ;;let target-y item target-index init-confed-y
+    ;;let target-x item target-index init-confed-x
+    ;;let tarpatch patch target-x target-y
+    ;;set targetPatch tarpatch
+
+     set targetPatch  min-one-of (patches with [UnionPreperationPatch = 1]) [distance myself]
+
 
   ]
+  print "done-confeds"
 
   create-confeds 5 [
     set energy 100
+    set manpower 500
     let remove-index random length init-confed-y
     let tycor item remove-index init-confed-y
     set ycor tycor
@@ -77,10 +96,39 @@ to go
   if ticks >= 500 [ stop ]
   check-turtle-status
   move-turtles
+  check-after-move
   fight-turtles
   recover-turtles
   tick
 end
+
+to check-after-move
+  if AreAllUnionReady != 1
+  [
+  ask unions [
+   let prep [UnionPreperationPatch] of patch-here
+        if (prep = 1 and isAtPrep = 0 )
+        [
+          set isAtPrep  1
+          ;;set targetPatch patch-here
+        ]
+
+
+
+
+    ]
+  ]
+
+   if all? unions [(isAtPrep = 1) or (IsInRetreat = 1) ]
+  [
+    set AreAllUnionReady 1
+    ask unions
+    [
+         set targetPatch  min-one-of (patches with [any? confeds-here]) [distance myself]
+    ]
+  ]
+end
+
 
 to check-turtle-status
   ask unions[
@@ -95,9 +143,13 @@ to check-turtle-status
       [
        set IsInRout  0
         set IsInRetreat  0
+
       ]
     ]
+
   ]
+
+
 end
 
 to recover-turtles
@@ -144,10 +196,34 @@ end
 
 to walk-towards-goal
   face best-way-to targetPatch
-  if not any? turtles-on patch-ahead 1
+  ifelse  any? confeds-on patch-ahead 1
+  [
+
+  ]
+  [
+  ifelse not any? turtles-on patch-ahead 1
   [
   fd 1
    set energy energy - DryPatchCost
+      set stuckCount 0
+  ]
+
+    [
+      right 90
+      ifelse (not any? turtles-on patch-ahead 1) and ( [IsWater] of patch-ahead 1 = 0)
+      [
+        fd 1
+          set energy energy - DryPatchCost
+         set stuckCount 0
+      ]
+      [
+        set stuckCount stuckCount +  1
+        if (stuckCount > 5)
+        [
+          set isAtPrep 1
+        ]
+      ]
+    ]
   ]
 
 end
@@ -157,9 +233,10 @@ to-report best-way-to [ destination ]
   ; of all the visible route patches, select the ones
   ; that would take me closer to my destination
   let visible-patches patches in-radius 10
-  let visible-routes visible-patches with [ pcolor = green ]
+  let visible-routes visible-patches
   let routes-that-take-me-closer visible-routes with [
     distance destination < [ distance destination - 1 ] of myself
+    and (count unions-on destination = 0)
   ]
   ifelse any? routes-that-take-me-closer [
     ; from those route patches, choose the one that is the closest to me
@@ -350,10 +427,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-17
-604
-189
-637
+22
+603
+194
+636
 DryPatchCost
 DryPatchCost
 0
@@ -365,12 +442,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-25
-666
-197
-699
-WetPatchCose
-WetPatchCose
+21
+646
+193
+679
+WetPatchCost
+WetPatchCost
 0
 100
 15.0
@@ -416,6 +493,17 @@ true
 PENS
 "Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot mean [Manpower] of unions ]"
 "Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [Manpower] of confeds ]"
+
+MONITOR
+747
+557
+896
+602
+NIL
+Sum  [isAtPrep] of unions
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
