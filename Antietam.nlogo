@@ -1,7 +1,7 @@
-turtles-own [energy manpower target-x target-y isInRetreat isWet isInRout]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout]
 breed [unions union]
 breed [confeds confed]
-globals [PctReserve]
+globals [PctReserve UnionRetreatPatch ConfedRetreatPatch]
 
 
 
@@ -43,19 +43,28 @@ to setup-turtles
     let remove-indexx random length init-union-x
     set xcor item remove-indexx init-union-x
     set init-union-x remove-item remove-indexx init-union-x
-    set  target-x random-xcor
-    set  target-y random-ycor
+
+    let target-index random length init-confed-y
+    let target-y item target-index init-confed-y
+    let target-x item target-index init-confed-x
+    let tarpatch patch target-x target-y
+    set targetPatch tarpatch
+
   ]
 
   create-confeds 5 [
     set energy 100
     let remove-index random length init-confed-y
-    set ycor item remove-index init-confed-y
+    let tycor item remove-index init-confed-y
+    set ycor tycor
     set init-confed-y remove-item remove-index init-confed-y
     let remove-indexx random length init-confed-x
-    set xcor item remove-indexx init-confed-x
+    let txcor item remove-indexx init-confed-x
+    set xcor txcor
     set init-confed-x remove-item remove-indexx init-confed-x
-    set target-x random-xcor
+
+    let tarpatch patch txcor tycor
+    set targetPatch tarpatch
   ]
 
 
@@ -66,20 +75,98 @@ end
 
 to go
   if ticks >= 500 [ stop ]
+  check-turtle-status
   move-turtles
+  fight-turtles
+  recover-turtles
   tick
 end
 
+to check-turtle-status
+  ask unions[
+    ifelse manpower < RoutLimit[
+      set IsInRout  1
+  ]
+    [
+      ifelse energy < RetreatEnergyLimit[
+        set IsInRetreat 1
+       set targetPatch UnionRetreatPatch
+      ]
+      [
+       set IsInRout  0
+        set IsInRetreat  0
+      ]
+    ]
+  ]
+end
+
+to recover-turtles
+  ask turtles [
+    ifelse isInRout = 1
+    []
+    [
+      ifelse isWet = 1
+      [
+        set energy energy + WetEnergyRecovery
+      ]
+      [
+        set energy energy + EnergyRecovery
+      ]
+
+    ]
+    if energy > 100
+    [
+      set energy 100
+    ]
+
+  ]
+end
 
 
-
-
+;; based on code from paths example model in model library
 to move-turtles
   ask turtles [
+    ifelse patch-here = targetPatch [
+    ;;set targetPatch one-of patches
+      ;; walk random for now
+    ]
+     [
+      walk-towards-goal
+    ]
 
-    right 45
-    forward 1
-    set energy energy - 1
+  ]
+
+end
+
+to fight-turtles
+
+end
+
+to walk-towards-goal
+  face best-way-to targetPatch
+  if not any? turtles-on patch-ahead 1
+  [
+  fd 1
+   set energy energy - DryPatchCost
+  ]
+
+end
+
+to-report best-way-to [ destination ]
+
+  ; of all the visible route patches, select the ones
+  ; that would take me closer to my destination
+  let visible-patches patches in-radius 10
+  let visible-routes visible-patches with [ pcolor = green ]
+  let routes-that-take-me-closer visible-routes with [
+    distance destination < [ distance destination - 1 ] of myself
+  ]
+  ifelse any? routes-that-take-me-closer [
+    ; from those route patches, choose the one that is the closest to me
+    report min-one-of routes-that-take-me-closer [ distance self ]
+  ] [
+    ; if there are no nearby routes to my destination
+    report destination
   ]
 
 end
@@ -105,8 +192,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -201,6 +288,134 @@ PctCreek
 1
 NIL
 HORIZONTAL
+
+SLIDER
+12
+405
+184
+438
+WetEnergyRecovery
+WetEnergyRecovery
+0
+100
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+455
+189
+488
+EnergyRecovery
+EnergyRecovery
+0
+100
+25.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+13
+504
+185
+537
+RoutLimit
+RoutLimit
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+552
+187
+585
+RetreatEnergyLimit
+RetreatEnergyLimit
+0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+604
+189
+637
+DryPatchCost
+DryPatchCost
+0
+100
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+25
+666
+197
+699
+WetPatchCose
+WetPatchCose
+0
+100
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+658
+10
+1011
+222
+Average Energy
+ticks
+Energy
+0.0
+500.0
+0.0
+100.0
+false
+true
+"" ""
+PENS
+"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot mean [energy] of unions ]"
+"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [energy] of confeds ]"
+
+PLOT
+658
+231
+1015
+447
+Average Manpower
+NIL
+NIL
+0.0
+500.0
+0.0
+1000.0
+false
+true
+"" ""
+PENS
+"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot mean [Manpower] of unions ]"
+"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [Manpower] of confeds ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
