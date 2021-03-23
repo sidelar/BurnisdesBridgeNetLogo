@@ -1,15 +1,31 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget]
 breed [unions union]
 breed [confeds confed]
-globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon ]
+globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount
+p-valids   ; Valid Patches for moving not wall)
+  Start      ; Starting patch
+  Final-Cost ; The final cost of the path given by A*
 
-patches-own [UnionPreperationPatch IsWater]
+]
+
+patches-own [UnionPreperationPatch IsWater IsBridgePatch
+ father     ; Previous patch in this partial path
+  Cost-path  ; Stores the cost of the path to the current patch
+  visited?   ; has the path been visited previously? That is,
+             ; at least one path has been calculated going through this patch
+  active?    ; is the patch active? That is, we have reached it, but
+             ; we must consider it because its children have not been explored
+]
 
 
 
 
 to setup
   clear-all
+
+
+
+
 
   setup-patches
   setup-turtles
@@ -18,6 +34,7 @@ to setup
 end
 
 to setup-patches
+  set waitAtPrepCount 0
   set UnionRetreatPatch patch max-pxcor min-pycor
   set ConfedRetreatPatch patch min-pxcor max-pycor
   ask patches  [ set pcolor green
@@ -27,8 +44,44 @@ to setup-patches
       set UnionPreperationPatch  1
      set pcolor black
     ]
+
+     if   (pycor = pxcor - 8 ) or (pycor = pxcor - 9 )
+    [
+      set IsWater 1
+     set pcolor blue
+    ]
+        if  ( (pycor = -4  ) and (pxcor = 4) )  or ((pycor = -5  ) and (pxcor = 4))
+    [
+      set IsWater 0
+     set pcolor grey
+      set IsBridgePatch 1
+    ]
+
   ]
+
+ask patches
+  [
+    set father nobody
+    set Cost-path 0
+    set visited? false
+    set active? false
+  ]
+  ; Generation of random obstacles
+
+  ; Se the valid patches (not wall)
+  set p-valids patches with [pcolor != blue]
+  ; Create a random start
+
+
+
+
+
+
 end
+
+
+
+
 
 to setup-turtles
   let tot 0
@@ -42,15 +95,42 @@ to setup-turtles
 
   let init-confed-y (list 10 9 8 7 6)
   let init-confed-x (list -7 -6 -4 -3 -2)
-  let init-union-y (list -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10)
-  let init-union-x (list 0 2 3 4 5 6 7 8 9 10)
+  let init-union-y (list -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -9)
+  let init-union-x (list 0 2 3 4 5 6 7 8 9 10 10)
 
 
   set-default-shape unions "nato freindly"
   set-default-shape confeds "nato enemy"
-  create-unions 10  [
+  let TotalUnion 10
+  let totCreek (PctCreek * TotalUnion / 100)
+  let totBridge (PctBridge * TotalUnion / 100)
+  let totReserve (PctReserve * TotalUnion / 100)
+  create-unions totBridge  [
     set energy 100
     set manpower 10000
+    set isCreek 0
+    let remove-index random length init-union-y
+    set ycor item remove-index init-union-y
+    ;;set init-union-y remove-item remove-index init-union-y
+    let remove-indexx random length init-union-x
+    set xcor item remove-indexx init-union-x
+    ;;set init-union-x remove-item remove-indexx init-union-x
+
+    ;;let target-index random length init-confed-y
+    ;;let target-y item target-index init-confed-y
+    ;;let target-x item target-index init-confed-x
+    ;;let tarpatch patch target-x target-y
+    ;;set targetPatch tarpatch
+
+     set targetPatch  min-one-of (patches with [UnionPreperationPatch = 1]) [distance myself]
+
+
+  ]
+
+   create-unions totCreek  [
+    set energy 100
+    set manpower 10000
+    set isCreek 1
     let remove-index random length init-union-y
     set ycor item remove-index init-union-y
     set init-union-y remove-item remove-index init-union-y
@@ -67,8 +147,36 @@ to setup-turtles
      set targetPatch  min-one-of (patches with [UnionPreperationPatch = 1]) [distance myself]
 
 
+
   ]
-  print "done-confeds"
+
+
+
+  create-unions totReserve  [
+    set energy 100
+    set manpower 10000
+    set isCreek 0
+    let remove-index random length init-union-y
+    set ycor item remove-index init-union-y
+    set init-union-y remove-item remove-index init-union-y
+    let remove-indexx random length init-union-x
+    set xcor item remove-indexx init-union-x
+    set init-union-x remove-item remove-indexx init-union-x
+
+    ;;let target-index random length init-confed-y
+    ;;let target-y item target-index init-confed-y
+    ;;let target-x item target-index init-confed-x
+    ;;let tarpatch patch target-x target-y
+    ;;set targetPatch tarpatch
+
+    set targetPatch nobody
+
+
+
+  ]
+
+
+
 
   create-confeds 5 [
     set energy 100
@@ -86,11 +194,15 @@ to setup-turtles
     set targetPatch tarpatch
   ]
 
-
+  ask turtles
+  [set A*path false]
 
 
 
 end
+
+
+
 
 to go
   if ticks >= 500 [ stop ]
@@ -113,13 +225,50 @@ to check-after-move
           ;;set targetPatch patch-here
         ]
 
+      if needNewTarget = 1
+      [
+        if(AreAllUnionReady = 0)
+        [
+          set needNewTarget 0
+          set A*Path false
+          set targetPatch  one-of (patches with [UnionPreperationPatch = 1 and not any? turtles-here])
+          print "retargeting blocked turtle"
+          print who
+        ]
+      ]
+
+
+
+
 
 
 
     ]
   ]
 
-   if all? unions [(isAtPrep = 1) or (IsInRetreat = 1) ]
+  ifelse IsBridgeCaptured != 1
+  [
+    if any? unions with [isAtPrep = 1]
+    [
+      set IsBridgeCaptured 1
+    ]
+
+  ]
+
+  [
+    ask unions
+    [
+      if targetPatch = nobody
+      [
+          set targetPatch  min-one-of (patches with [UnionPreperationPatch = 1]) [distance myself]
+      ]
+
+    ]
+  ]
+
+
+
+   if all? unions [(isAtPrep = 1) or (IsInRetreat = 1) or (targetPatch = nobody) ]
   [
     set AreAllUnionReady 1
     ask unions
@@ -195,36 +344,99 @@ to fight-turtles
 end
 
 to walk-towards-goal
-  face best-way-to targetPatch
-  ifelse  any? confeds-on patch-ahead 1
-  [
 
-  ]
+  let intermedDest targetPatch
+  if targetPatch != nobody
   [
-  ifelse not any? turtles-on patch-ahead 1
-  [
-  fd 1
-   set energy energy - DryPatchCost
-      set stuckCount 0
-  ]
+    ifelse IsCreek = 1 or AreAllUnionReady = 1  ;; if going through creek just run in a straight line
+    [
+      set intermedDest best-way-to targetPatch
+    ]
 
     [
-      right 90
-      ifelse (not any? turtles-on patch-ahead 1) and ( [IsWater] of patch-ahead 1 = 0)
+
+      ifelse A*path = false
       [
-        fd 1
-          set energy energy - DryPatchCost
-         set stuckCount 0
+        let here patch-here
+        let valid p-valids with [(not any? turtles-here)]
+        set valid (patch-set here valid)
+        carefully [
+          let path  A* patch-here targetPatch valid ;
+          ifelse path = false
+          [
+            set needNewTarget 1
+          ]
+          [
+            set  path remove-item  0 path
+            set intermedDest first path
+            set A*path path
+          ]
+        ] [
+          print error-message ;
+          set needNewTarget 1;
+          ;; or do something else instead...
+
+        ]
+
+
       ]
       [
-        set stuckCount stuckCount +  1
-        if (stuckCount > 5)
+        ifelse length A*path  > 1
         [
-          set isAtPrep 1
+
+          set intermedDest item 1 A*path
+          ifelse not any? turtles-on intermedDest
+          [
+            set  A*path remove-item  0 A*path
+
+
+          ]
+          [ set stuckCount stuckCount + 1
+            set intermedDest nobody
+
+            if stuckCount > 10
+            [set isAtPrep 1]
+          ]
+        ]
+        [
+
         ]
       ]
+
+
+      ;;print path
+      ;;print patch-here
+
+
+    ]
+
+    ifelse intermedDest = nobody
+    [
+
+    ]
+    [
+      face intermedDest
+      move-to patch-ahead 1
+
+      set stuckCount 0
+      ifelse [IsWater] of  intermedDest = 1
+      [
+        set energy energy - WetPatchCost
+        set isWet 1
+      ]
+      [
+        set energy energy - DryPatchCost
+      ]
+
+
     ]
   ]
+
+
+
+
+
+
 
 end
 
@@ -233,29 +445,152 @@ to-report best-way-to [ destination ]
   ; of all the visible route patches, select the ones
   ; that would take me closer to my destination
   let visible-patches patches in-radius 10
-  let visible-routes visible-patches
-  let routes-that-take-me-closer visible-routes with [
-    distance destination < [ distance destination - 1 ] of myself
-    and (count unions-on destination = 0)
+
+
+    let visible-routes visible-patches with [(not any? turtles-here)]
+    let routes-that-take-me-closer visible-routes with [
+    distance destination < [ distance destination + 1 ] of myself
   ]
+
+
+
   ifelse any? routes-that-take-me-closer [
     ; from those route patches, choose the one that is the closest to me
     report min-one-of routes-that-take-me-closer [ distance self ]
   ] [
     ; if there are no nearby routes to my destination
-    report destination
+    report nobody
   ]
 
+
+
+
+
+
+
+end
+
+ ;;Patch report to estimate the total expected cost of the path starting from
+; in Start, passing through it, and reaching the #Goal
+to-report Total-expected-cost [#Goal]
+  report Cost-path + Heuristic #Goal
+end
+
+; Patch report to reurtn the heuristic (expected length) from the current patch
+; to the #Goal
+to-report Heuristic [#Goal]
+  report distance #Goal
+end
+
+; A* algorithm. Inputs:
+;   - #Start     : starting point of the search.
+;   - #Goal      : the goal to reach.
+;   - #valid-map : set of agents (patches) valid to visit.
+; Returns:
+;   - If there is a path : list of the agents of the path.
+;   - Otherwise          : false
+
+to-report A* [#Start #Goal #valid-map]
+  ; clear all the information in the agents
+  ask #valid-map with [visited?]
+  [
+    set father nobody
+    set Cost-path 0
+    set visited? false
+    set active? false
+  ]
+  ; Active the staring point to begin the searching loop
+  ask #Start
+  [
+    set father self
+    set visited? true
+    set active? true
+  ]
+  ; exists? indicates if in some instant of the search there are no options to
+  ; continue. In this case, there is no path connecting #Start and #Goal
+  let exists? true
+  ; The searching loop is executed while we don't reach the #Goal and we think
+  ; a path exists
+  while [not [visited?] of #Goal and exists?]
+  [
+    ; We only work on the valid pacthes that are active
+    let options #valid-map with [active?]
+    ; If any
+    ifelse any? options
+    [
+      ; Take one of the active patches with minimal expected cost
+      ask min-one-of options [Total-expected-cost #Goal]
+      [
+        ; Store its real cost (to reach it) to compute the real cost
+        ; of its children
+        let Cost-path-father Cost-path
+        ; and deactivate it, because its children will be computed right now
+        set active? false
+        ; Compute its valid neighbors
+        let valid-neighbors neighbors with [member? self #valid-map]
+        ask valid-neighbors
+        [
+          ; There are 2 types of valid neighbors:
+          ;   - Those that have never been visited (therefore, the
+          ;       path we are building is the best for them right now)
+          ;   - Those that have been visited previously (therefore we
+          ;       must check if the path we are building is better or not,
+          ;       by comparing its expected length with the one stored in
+          ;       the patch)
+          ; One trick to work with both type uniformly is to give for the
+          ; first case an upper bound big enough to be sure that the new path
+          ; will always be smaller.
+          let t ifelse-value visited? [ Total-expected-cost #Goal] [2 ^ 20]
+          ; If this temporal cost is worse than the new one, we substitute the
+          ; information in the patch to store the new one (with the neighbors
+          ; of the first case, it will be always the case)
+          if t > (Cost-path-father + distance myself + Heuristic #Goal)
+          [
+            ; The current patch becomes the father of its neighbor in the new path
+            set father myself
+            set visited? true
+            set active? true
+            ; and store the real cost in the neighbor from the real cost of its father
+            set Cost-path Cost-path-father + distance father
+            set Final-Cost precision Cost-path 3
+          ]
+        ]
+      ]
+    ]
+    ; If there are no more options, there is no path between #Start and #Goal
+    [
+      set exists? false
+    ]
+  ]
+  ; After the searching loop, if there exists a path
+  ifelse exists?
+  [
+    ; We extract the list of patches in the path, form #Start to #Goal
+    ; by jumping back from #Goal to #Start by using the fathers of every patch
+    let current #Goal
+    set Final-Cost (precision [Cost-path] of #Goal 3)
+    let rep (list current)
+    While [current != #Start]
+    [
+      set current [father] of current
+      set rep fput current rep
+    ]
+    report rep
+  ]
+  [
+    ; Otherwise, there is no path, and we return False
+    report false
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+195
 10
-647
-448
+1213
+1029
 -1
 -1
-13.0
+10.0
 1
 10
 1
@@ -265,10 +600,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-50
+50
+-50
+50
 1
 1
 1
@@ -345,7 +680,7 @@ PctBridge
 PctBridge
 0
 100
-49.0
+20.0
 1
 1
 NIL
@@ -360,7 +695,7 @@ PctCreek
 PctCreek
 0
 100
-50.0
+20.0
 1
 1
 NIL
@@ -457,10 +792,10 @@ NIL
 HORIZONTAL
 
 PLOT
-658
-10
-1011
-222
+1240
+81
+1593
+293
 Average Energy
 ticks
 Energy
@@ -476,10 +811,10 @@ PENS
 "Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [energy] of confeds ]"
 
 PLOT
-658
-231
-1015
-447
+1236
+416
+1593
+632
 Average Manpower
 NIL
 NIL
@@ -495,10 +830,10 @@ PENS
 "Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [Manpower] of confeds ]"
 
 MONITOR
-747
-557
-896
-602
+1236
+642
+1385
+687
 NIL
 Sum  [isAtPrep] of unions
 17
