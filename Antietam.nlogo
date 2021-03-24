@@ -34,7 +34,12 @@ to setup
 end
 
 to setup-patches
+
   set waitAtPrepCount 0
+
+  ;import-pcolors "battleMap.png"
+  ;ask patches [ifelse (pcolor < 139 and pcolor > 100) [set isWater true] [set isWater false]] //still need to figure out colors that idenitfy as blue
+
   set UnionRetreatPatch patch max-pxcor min-pycor
   set ConfedRetreatPatch patch min-pxcor max-pycor
   ask patches  [ set pcolor green
