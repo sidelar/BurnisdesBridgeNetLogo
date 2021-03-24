@@ -17,7 +17,8 @@ patches-own [UnionPreperationPatch IsWater IsBridgePatch
              ; we must consider it because its children have not been explored
 ]
 
-
+;add boolean for both land and water
+;patches-own [UnionPreperationPatch IsWater isLand]
 
 
 to setup
@@ -40,6 +41,29 @@ to setup-patches
   ;import-pcolors "battleMap.png"
   ;ask patches [ifelse (pcolor < 139 and pcolor > 100) [set isWater true] [set isWater false]] //still need to figure out colors that idenitfy as blue
 
+; code to create a creek and bridge
+;  ask patches[ 
+;    set pcolor green
+;    set IsWater false
+;    set isLand true
+;
+;    if ((pxcor > -3) and (pxcor < 1)and (pycor < 17))
+;    [ 
+;      set pcolor blue 
+;      set IsWater true
+;       set isLand false
+;    ]
+;    if ((pxcor > -3) and (pxcor < 1)and (pycor < 0) and (pycor > -4))
+;    [ 
+;      set pcolor brown 
+;      set IsWater false
+;       set isLand true
+;    ]
+;  ]
+  
+  
+  
+  
   set UnionRetreatPatch patch max-pxcor min-pycor
   set ConfedRetreatPatch patch min-pxcor max-pycor
   ask patches  [ set pcolor green
