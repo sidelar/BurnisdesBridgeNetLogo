@@ -1,7 +1,7 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower]
 breed [unions union]
 breed [confeds confed]
-globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount
+globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount IsUnionWin IsConfedWin
 p-valids   ; Valid Patches for moving not wall)
   Start      ; Starting patch
   Final-Cost ; The final cost of the path given by A*
@@ -26,7 +26,9 @@ to setup
 
 
 
-
+  set isBattleWon false
+   set IsUnionWin false
+   set IsConfedWin false
 
   setup-patches
   setup-turtles
@@ -42,33 +44,33 @@ to setup-patches
   ;ask patches [ifelse (pcolor < 139 and pcolor > 100) [set isWater true] [set isWater false]] //still need to figure out colors that idenitfy as blue
 
 ; code to create a creek and bridge
-;  ask patches[ 
+;  ask patches[
 ;    set pcolor green
 ;    set IsWater false
 ;    set isLand true
 ;
 ;    if ((pxcor > -3) and (pxcor < 1)and (pycor < 17))
-;    [ 
-;      set pcolor blue 
+;    [
+;      set pcolor blue
 ;      set IsWater true
 ;       set isLand false
 ;    ]
 ;    if ((pxcor > -3) and (pxcor < 1)and (pycor < 0) and (pycor > -4))
-;    [ 
-;      set pcolor brown 
+;    [
+;      set pcolor brown
 ;      set IsWater false
 ;       set isLand true
 ;    ]
 ;  ]
-  
-  
-  
-  
-  set UnionRetreatPatch patch max-pxcor min-pycor
-  set ConfedRetreatPatch patch min-pxcor max-pycor
+
+
+
+
+  set UnionRetreatPatch patch (max-pxcor - 1) (min-pycor + 1)
+  set ConfedRetreatPatch patch (min-pxcor + 1) (max-pycor - 1)
   ask patches  [ set pcolor green
     set IsWater 0
-    if (pxcor < 5) and (pxcor > -5) and (pycor <= pxcor - 2) and (pycor > pxcor - 4)
+    if (pxcor < 5) and (pxcor > -5) and (pycor <= pxcor - 1) and (pycor > pxcor - 3)
     [
       set UnionPreperationPatch  1
      set pcolor black
@@ -98,7 +100,7 @@ ask patches
   ; Generation of random obstacles
 
   ; Se the valid patches (not wall)
-  set p-valids patches with [pcolor != blue]
+  set p-valids patches with [pcolor != blue and pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
   ; Create a random start
 
 
@@ -122,8 +124,8 @@ to setup-turtles
     error e
   ]
 
-  let init-confed-y (list 10 9 8 7 6)
-  let init-confed-x (list -7 -6 -4 -3 -2)
+  let init-confed-y (list 10 9 8 7 6 10 11)
+  let init-confed-x (list -7 -6 -4 -3 -2 -5 -4)
   let init-union-y (list -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -10 -9)
   let init-union-x (list 0 2 3 4 5 6 7 8 9 10 10)
 
@@ -136,7 +138,8 @@ to setup-turtles
   let totReserve (PctReserve * TotalUnion / 100)
   create-unions totBridge  [
     set energy 100
-    set manpower 10000
+    set manpower 1000
+    set InitalManpower manpower
     set isCreek 0
     let remove-index random length init-union-y
     set ycor item remove-index init-union-y
@@ -158,7 +161,8 @@ to setup-turtles
 
    create-unions totCreek  [
     set energy 100
-    set manpower 10000
+    set manpower 1000
+     set InitalManpower manpower
     set isCreek 1
     let remove-index random length init-union-y
     set ycor item remove-index init-union-y
@@ -183,7 +187,8 @@ to setup-turtles
 
   create-unions totReserve  [
     set energy 100
-    set manpower 10000
+    set manpower 1000
+     set InitalManpower manpower
     set isCreek 0
     let remove-index random length init-union-y
     set ycor item remove-index init-union-y
@@ -210,6 +215,7 @@ to setup-turtles
   create-confeds 5 [
     set energy 100
     set manpower 500
+     set InitalManpower manpower
     let remove-index random length init-confed-y
     let tycor item remove-index init-confed-y
     set ycor tycor
@@ -230,16 +236,79 @@ to setup-turtles
 
 end
 
+to create-reinforcements
+  print "Ap Hill Arrives!"
+  let init-confed-y (list 10 11)
+  let init-confed-x (list  -5 -4)
+   create-confeds 2 [
+    set energy 50
+    set manpower 500
+     set InitalManpower manpower
+    let remove-index random length init-confed-y
+    let tycor item remove-index init-confed-y
+
+    set init-confed-y remove-item remove-index init-confed-y
+    let remove-indexx random length init-confed-x
+    let txcor item remove-indexx init-confed-x
+    move-to ConfedRetreatPatch
+    set init-confed-x remove-item remove-indexx init-confed-x
+
+    let tarpatch patch txcor tycor
+    set targetPatch tarpatch
+  ]
+
+
+end
+
+
+to check-win
+  if not any?  confeds with [IsInRout = 0]
+[
+   set IsUnionWin  true
+  set  IsBattleWon true
+  ]
+
+ if not any? unions with [IsInRout = 0] or ticks = 500
+[
+  set IsConfedWin  true
+  set  IsBattleWon true
+  ]
+
+
+
+
+end
 
 
 
 to go
   if ticks >= 500 [ stop ]
+  if IsBattleWon [ stop]
   check-turtle-status
   move-turtles
   check-after-move
   fight-turtles
   recover-turtles
+  check-win
+  if ticks = 300 [
+    create-reinforcements
+  ]
+  ;;test retreat
+  ask union 2
+  [
+    set energy energy - 20
+    if ticks > 30
+    [
+      set energy 100
+    ]
+  ]
+
+  ;;test rout
+    ask union 5
+  [
+    set manpower manpower - 5
+  ]
+
   tick
 end
 
@@ -297,12 +366,14 @@ to check-after-move
 
 
 
-   if all? unions [(isAtPrep = 1) or (IsInRetreat = 1) or (targetPatch = nobody) ]
+   if all? unions [(isAtPrep = 1) or (IsInRetreat = 1) or (targetPatch = nobody) or (IsInRout = 1) ]
   [
     set AreAllUnionReady 1
     ask unions
     [
          set targetPatch  min-one-of (patches with [any? confeds-here]) [distance myself]
+          set needNewTarget 0
+          set A*Path false
     ]
   ]
 end
@@ -310,8 +381,10 @@ end
 
 to check-turtle-status
   ask unions[
-    ifelse manpower < RoutLimit[
+    ifelse manpower < ( RoutLimit / 100 * InitalManpower ) [
       set IsInRout  1
+      set targetPatch UnionRetreatPatch
+      set A*Path false
   ]
     [
       ifelse energy < RetreatEnergyLimit[
@@ -319,8 +392,14 @@ to check-turtle-status
        set targetPatch UnionRetreatPatch
       ]
       [
-       set IsInRout  0
-        set IsInRetreat  0
+        if IsInRetreat  = 1
+        [
+          set IsInRetreat  0
+          set targetPatch nobody
+          set needNewTarget 1
+        ]
+
+
 
       ]
     ]
@@ -347,6 +426,14 @@ to recover-turtles
     if energy > 100
     [
       set energy 100
+    ]
+    if energy < 0
+    [
+      set energy 0
+    ]
+    if manpower < 0
+    [
+      set manpower 0
     ]
 
   ]
@@ -377,7 +464,7 @@ to walk-towards-goal
   let intermedDest targetPatch
   if targetPatch != nobody
   [
-    ifelse IsCreek = 1 or AreAllUnionReady = 1  ;; if going through creek just run in a straight line
+    ifelse IsCreek = 1 or AreAllUnionReady = 1 or IsInRout = 1  ;; if going through creek just run in a straight line
     [
       set intermedDest best-way-to targetPatch
     ]
@@ -410,6 +497,7 @@ to walk-towards-goal
 
       ]
       [
+         carefully [
         ifelse length A*path  > 1
         [
 
@@ -427,9 +515,15 @@ to walk-towards-goal
             [set isAtPrep 1]
           ]
         ]
+          [
+          ]
+        ]
         [
 
+            set needNewTarget 1;
         ]
+
+
       ]
 
 
@@ -508,7 +602,8 @@ end
 ; Patch report to reurtn the heuristic (expected length) from the current patch
 ; to the #Goal
 to-report Heuristic [#Goal]
-  report distance #Goal
+  report  distance #Goal
+
 end
 
 ; A* algorithm. Inputs:
@@ -633,8 +728,8 @@ GRAPHICS-WINDOW
 50
 -50
 50
-1
-1
+0
+0
 1
 ticks
 30.0
@@ -739,7 +834,7 @@ WetEnergyRecovery
 WetEnergyRecovery
 0
 100
-5.0
+10.0
 1
 1
 NIL
@@ -769,7 +864,7 @@ RoutLimit
 RoutLimit
 0
 100
-50.0
+25.0
 1
 1
 NIL
@@ -784,7 +879,7 @@ RetreatEnergyLimit
 RetreatEnergyLimit
 0
 100
-0.0
+80.0
 1
 1
 NIL
@@ -799,7 +894,7 @@ DryPatchCost
 DryPatchCost
 0
 100
-5.0
+10.0
 1
 1
 NIL
@@ -814,7 +909,7 @@ WetPatchCost
 WetPatchCost
 0
 100
-15.0
+30.0
 1
 1
 NIL
