@@ -40,13 +40,13 @@ to setup-patches
 
   set-patch-size 8
   ;if we want to use a slider to adjust the map size
-  ;resize-world (mapSize * -1)  mapSize (mapSize * -1) mapSize 
+  ;resize-world (mapSize * -1)  mapSize (mapSize * -1) mapSize
   ;if we want a fized size for the map size
   resize-world -45 45 -35 35 ;
 
   set waitAtPrepCount 0
 
- 
+
 
 ; code to create a creek and bridge
 ;  ask patches[
@@ -68,32 +68,78 @@ to setup-patches
 ;    ]
 ;  ]
 
+let creekPoints patches at-points [
+      [9 35] [10 34] [10 33] [10 32]
+     [10 31] [10 30] [10 29]
+     [10 28] [10 27] [10 26] [10 25]
+     [10 24] [10 23] [10 22] [10 21]
+     [10 20] [10 19] [10 18] [10 17]
+     [10 16] [10 15] [10 14]
+    [10 12] [11 12]   [11 11] [12 10] [12 9]
+    [12 8] [13 8] [12 7] [12 6] [11 5] [12 5] [11 4]
+     [10 4] [10 3] [10 1] [10 2] [10 0]
+
+    [3 -35] [3 -34] [4 -33] [4 -32]
+     [5 -31] [5 -30] [6 -29]
+     [6 -28] [7 -27] [8 -26] [9 -25]
+     [10 -24] [10 -23] [10 -22] [10 -21]
+     [10 -20] [10 -19] [10 -18] [10 -17]
+    [11 -19] [12 -19] [13 -19] [14 -19]
+    [15 -19] [16 -19] [17 -19] [18 -19]
+    [19 -19]  [20 -19]   [21 -19]  [22 -19]
+    [23 -19]  [24 -19]   [25 -19]  [26 -19]
+    [27 -19]  [28 -19]   [29 -19]  [30 -19]
+     [31 -18]  [32 -18]   [33 -18]  [34 -18]
+      [35 -18]  [36 -18]   [37 -18]  [38 -18]
+      [39 -18]  [40 -18]   [41 -18]  [42 -18]
+      [43 -18]  [44 -18]   [45 -18]
+     [10 -16] [10 -15] [10 -14] [10 -13]
+     [10 -12] [10 -11] [10 -10] [10 -9]
+    [10 -8] [10 -7] [9 -6] [9 -5]
+     [9 -4] [9 -3] [9 -2] [9 -1]
+
+    ]
+
+  let bridgePoints patches at-points [ [11 13] [10 13] [12 13]]
+   let UnionPreperationPatches patches at-points [
+    [2 15] [2 17] [2 19]
+    [2 21] [2 23] [2 25]
+    [2 13] [2 11] [2 9]
+    [2 27] [2 29] [2 31]
+    [2 7] [2 5] [2 3]
+  ]
 
 
 
-  set UnionRetreatPatch patch (max-pxcor - 1) (min-pycor + 1)
+
+  set UnionRetreatPatch patch (max-pxcor - 1) (max-pycor - 1)
   set ConfedRetreatPatch patch (min-pxcor + 1) (max-pycor - 1)
-  ask patches  [ set pcolor green
+  ask patches  [ set pcolor green - 2
     set IsWater 0
-    if (pxcor < 5) and (pxcor > -5) and (pycor <= pxcor - 1) and (pycor > pxcor - 3)
-    [
+
+  ]
+  ask UnionPreperationPatches
+  [
+
       set UnionPreperationPatch  1
      set pcolor black
     ]
 
-     if   (pycor = pxcor - 8 ) or (pycor = pxcor - 9 )
-    [
-      set IsWater 1
-     set pcolor blue
-    ]
-        if  ( (pycor = -4  ) and (pxcor = 4) )  or ((pycor = -5  ) and (pxcor = 4))
+
+     ask bridgePoints
     [
       set IsWater 0
-     set pcolor grey
+     set pcolor grey + 2
       set IsBridgePatch 1
     ]
 
-  ]
+
+
+    ask creekPoints [
+    set pcolor blue + 1
+    set IsWater 1]
+
+
 
 ask patches
   [
@@ -135,6 +181,18 @@ to setup-turtles
   let init-union-x (list 0 2 3 4 5 6 7 8 9 10 10)
 
 
+  let initalUnionPoints patches at-points [
+    [39 25] [39 23] [39 21] [39 19]
+    [39 17] [39 15] [39 13] [39 11]
+    [39 9] [39 7]
+  ]
+
+   let initalConfedPoints patches at-points [
+    [-34 26] [-34 22] [-34 18] [-34 14]
+    [-34 10]  [-34 6]
+  ]
+
+
   set-default-shape unions "nato freindly"
   set-default-shape confeds "nato enemy"
   let TotalUnion 10
@@ -146,11 +204,12 @@ to setup-turtles
     set manpower 1000
     set InitalManpower manpower
     set isCreek 0
-    let remove-index random length init-union-y
-    set ycor item remove-index init-union-y
+    move-to one-of initalUnionPoints
+    ;;let remove-index random length initalUnionPoints
+    ;;set ycor item remove-index init-union-y
     ;;set init-union-y remove-item remove-index init-union-y
-    let remove-indexx random length init-union-x
-    set xcor item remove-indexx init-union-x
+    ;;let remove-indexx random length init-union-x
+    ;;set xcor item remove-indexx init-union-x
     ;;set init-union-x remove-item remove-indexx init-union-x
 
     ;;let target-index random length init-confed-y
@@ -169,12 +228,15 @@ to setup-turtles
     set manpower 1000
      set InitalManpower manpower
     set isCreek 1
-    let remove-index random length init-union-y
-    set ycor item remove-index init-union-y
-    set init-union-y remove-item remove-index init-union-y
-    let remove-indexx random length init-union-x
-    set xcor item remove-indexx init-union-x
-    set init-union-x remove-item remove-indexx init-union-x
+
+
+
+    move-to one-of initalUnionPoints with [not any? turtles-here]
+    ;;set ycor item remove-index init-union-y
+    ;;set init-union-y remove-item remove-index init-union-y
+    ;;let remove-indexx random length init-union-x
+    ;;set xcor item remove-indexx init-union-x
+    ;;set init-union-x remove-item remove-indexx init-union-x
 
     ;;let target-index random length init-confed-y
     ;;let target-y item target-index init-confed-y
@@ -195,12 +257,14 @@ to setup-turtles
     set manpower 1000
      set InitalManpower manpower
     set isCreek 0
-    let remove-index random length init-union-y
-    set ycor item remove-index init-union-y
-    set init-union-y remove-item remove-index init-union-y
-    let remove-indexx random length init-union-x
-    set xcor item remove-indexx init-union-x
-    set init-union-x remove-item remove-indexx init-union-x
+
+    move-to one-of initalUnionPoints with [not any? turtles-here]
+    ;;let remove-index random length init-union-y
+    ;;set ycor item remove-index init-union-y
+    ;;set init-union-y remove-item remove-index init-union-y
+    ;;let remove-indexx random length init-union-x
+    ;;set xcor item remove-indexx init-union-x
+    ;;set init-union-x remove-item remove-indexx init-union-x
 
     ;;let target-index random length init-confed-y
     ;;let target-y item target-index init-confed-y
@@ -217,25 +281,32 @@ to setup-turtles
 
 
 
-  create-confeds 5 [
+  create-confeds 6 [
     set energy 100
     set manpower 500
      set InitalManpower manpower
-    let remove-index random length init-confed-y
-    let tycor item remove-index init-confed-y
-    set ycor tycor
-    set init-confed-y remove-item remove-index init-confed-y
-    let remove-indexx random length init-confed-x
-    let txcor item remove-indexx init-confed-x
-    set xcor txcor
-    set init-confed-x remove-item remove-indexx init-confed-x
+    move-to one-of initalConfedPoints with [not any? turtles-here]
 
-    let tarpatch patch txcor tycor
+
+    let tarpatch patch-here
+    set targetPatch tarpatch
+  ]
+
+
+  create-confeds 1 [
+    set energy 100
+    set manpower 500
+     set InitalManpower manpower
+    move-to patch 7 12
+
+
+    let tarpatch patch-here
     set targetPatch tarpatch
   ]
 
   ask turtles
-  [set A*path false]
+  [set A*path false
+  set size 2]
 
 
 
@@ -243,23 +314,22 @@ end
 
 to create-reinforcements
   print "Ap Hill Arrives!"
-  let init-confed-y (list 10 11)
-  let init-confed-x (list  -5 -4)
+  let initalConfedPoints patches at-points [
+    [-34 26] [-34 22] [-34 18] [-34 14]
+    [-34 10]  [-34 6]
+  ]
    create-confeds 2 [
     set energy 50
     set manpower 500
      set InitalManpower manpower
-    let remove-index random length init-confed-y
-    let tycor item remove-index init-confed-y
 
-    set init-confed-y remove-item remove-index init-confed-y
-    let remove-indexx random length init-confed-x
-    let txcor item remove-indexx init-confed-x
+
     move-to ConfedRetreatPatch
-    set init-confed-x remove-item remove-indexx init-confed-x
 
-    let tarpatch patch txcor tycor
+
+    let tarpatch one-of initalConfedPoints
     set targetPatch tarpatch
+    set size 2
   ]
 
 
@@ -295,7 +365,7 @@ to go
   fight-turtles
   recover-turtles
   check-win
-  if ticks = 300 [
+  if ticks = 330 [
     create-reinforcements
   ]
   ;;test retreat
@@ -714,12 +784,12 @@ end
 @#$#@#$#@
 GRAPHICS-WINDOW
 195
-10
-713
-529
+11
+931
+588
 -1
 -1
-10.0
+8.0
 1
 10
 1
@@ -729,10 +799,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--25
-25
--25
-25
+-45
+45
+-35
+35
 0
 0
 1
@@ -884,7 +954,7 @@ RetreatEnergyLimit
 RetreatEnergyLimit
 0
 100
-80.0
+20.0
 1
 1
 NIL
