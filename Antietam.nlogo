@@ -38,10 +38,15 @@ end
 
 to setup-patches
 
+  set-patch-size 8
+  ;if we want to use a slider to adjust the map size
+  ;resize-world (mapSize * -1)  mapSize (mapSize * -1) mapSize 
+  ;if we want a fized size for the map size
+  resize-world -45 45 -35 35 ;
+
   set waitAtPrepCount 0
 
-  ;import-pcolors "battleMap.png"
-  ;ask patches [ifelse (pcolor < 139 and pcolor > 100) [set isWater true] [set isWater false]] //still need to figure out colors that idenitfy as blue
+ 
 
 ; code to create a creek and bridge
 ;  ask patches[
