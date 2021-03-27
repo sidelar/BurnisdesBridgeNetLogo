@@ -2,7 +2,8 @@ turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stu
 breed [unions union]
 breed [confeds confed]
 globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount IsUnionWin IsConfedWin
-p-valids   ; Valid Patches for moving not wall)
+p-valids   ;
+ p-valids-water; Valid Patches for moving not wall)
   Start      ; Starting patch
   Final-Cost ; The final cost of the path given by A*
 
@@ -100,7 +101,7 @@ let creekPoints patches at-points [
 
     ]
 
-  let bridgePoints patches at-points [ [11 13] [10 13] [12 13]]
+  let bridgePoints patches at-points [ [11 13] [10 13] [12 13] [9 13]]
    let UnionPreperationPatches patches at-points [
     [2 15] [2 17] [2 19]
     [2 21] [2 23] [2 25]
@@ -151,7 +152,9 @@ ask patches
   ; Generation of random obstacles
 
   ; Se the valid patches (not wall)
-  set p-valids patches with [pcolor != blue and pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
+  set p-valids patches with [IsWater != 1 and pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
+   set p-valids-water patches with [ pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
+
   ; Create a random start
 
 
@@ -539,7 +542,7 @@ to walk-towards-goal
   let intermedDest targetPatch
   if targetPatch != nobody
   [
-    ifelse IsCreek = 1 or AreAllUnionReady = 1 or IsInRout = 1  ;; if going through creek just run in a straight line
+    ifelse  AreAllUnionReady = 1 or IsInRout = 1  ;; if going through creek just run in a straight line
     [
       set intermedDest best-way-to targetPatch
     ]
@@ -549,9 +552,15 @@ to walk-towards-goal
       ifelse A*path = false
       [
         let here patch-here
+
         let valid p-valids with [(not any? turtles-here)]
+
+        if IsCreek = 1
+        [ set valid p-valids-water with [(not any? turtles-here)]]
+
         set valid (patch-set here valid)
         carefully [
+
           let path  A* patch-here targetPatch valid ;
           ifelse path = false
           [
@@ -614,16 +623,19 @@ to walk-towards-goal
     ]
     [
       face intermedDest
-      move-to patch-ahead 1
+
+     ;; move-to patch-ahead 1
 
       set stuckCount 0
       ifelse [IsWater] of  intermedDest = 1
       [
         set energy energy - WetPatchCost
         set isWet 1
+        fd .25
       ]
       [
         set energy energy - DryPatchCost
+         fd 1
       ]
 
 
@@ -894,7 +906,7 @@ PctCreek
 PctCreek
 0
 100
-20.0
+0.0
 1
 1
 NIL
