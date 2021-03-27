@@ -715,8 +715,8 @@ end
 GRAPHICS-WINDOW
 195
 10
-1213
-1029
+713
+529
 -1
 -1
 10.0
@@ -726,13 +726,13 @@ GRAPHICS-WINDOW
 1
 1
 0
+0
+0
 1
-1
-1
--50
-50
--50
-50
+-25
+25
+-25
+25
 0
 0
 1
@@ -944,19 +944,19 @@ PLOT
 416
 1593
 632
-Average Manpower
+Total  Manpower
 NIL
 NIL
 0.0
 500.0
 0.0
-1000.0
+10000.0
 false
 true
 "" ""
 PENS
-"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot mean [Manpower] of unions ]"
-"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [Manpower] of confeds ]"
+"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot sum [Manpower] of unions ]"
+"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot sum [Manpower] of confeds ]"
 
 MONITOR
 1236
