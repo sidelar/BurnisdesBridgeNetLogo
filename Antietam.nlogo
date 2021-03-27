@@ -321,7 +321,7 @@ to create-reinforcements
     [-34 26] [-34 22] [-34 18] [-34 14]
     [-34 10]  [-34 6]
   ]
-   create-confeds 2 [
+   create-confeds 4 [
     set energy 50
     set manpower 500
      set InitalManpower manpower
