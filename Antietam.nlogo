@@ -26,7 +26,6 @@ to setup
   clear-all
 
 
-
   set isBattleWon false
    set IsUnionWin false
    set IsConfedWin false
@@ -196,8 +195,12 @@ to setup-turtles
   ]
 
 
-  set-default-shape unions "nato freindly"
-  set-default-shape confeds "nato enemy"
+;  set-default-shape unions "nato freindly"
+;  set-default-shape confeds "nato enemy"
+
+  set-default-shape unions "person soldier"
+  set-default-shape confeds "person soldier"
+
   let TotalUnion 10
   let totCreek (PctCreek * TotalUnion / 100)
   let totBridge (PctBridge * TotalUnion / 100)
@@ -229,6 +232,7 @@ to setup-turtles
    create-unions totCreek  [
     set energy 100
     set manpower 1000
+     set color blue
      set InitalManpower manpower
     set isCreek 1
 
@@ -258,6 +262,7 @@ to setup-turtles
   create-unions totReserve  [
     set energy 100
     set manpower 1000
+     set color blue
      set InitalManpower manpower
     set isCreek 0
 
@@ -287,6 +292,7 @@ to setup-turtles
   create-confeds 6 [
     set energy 100
     set manpower 500
+    set color red
      set InitalManpower manpower
     move-to one-of initalConfedPoints with [not any? turtles-here]
 
@@ -299,6 +305,7 @@ to setup-turtles
   create-confeds 1 [
     set energy 100
     set manpower 500
+     set color red
      set InitalManpower manpower
     move-to patch 7 12
 
@@ -795,10 +802,10 @@ to-report A* [#Start #Goal #valid-map]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-195
-11
-931
-588
+242
+50
+978
+627
 -1
 -1
 8.0
@@ -808,8 +815,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-0
-0
+1
+1
 1
 -45
 45
@@ -906,7 +913,7 @@ PctCreek
 PctCreek
 0
 100
-0.0
+20.0
 1
 1
 NIL
@@ -921,7 +928,7 @@ WetEnergyRecovery
 WetEnergyRecovery
 0
 100
-10.0
+100.0
 1
 1
 NIL
@@ -966,7 +973,7 @@ RetreatEnergyLimit
 RetreatEnergyLimit
 0
 100
-20.0
+80.0
 1
 1
 NIL
@@ -1026,19 +1033,19 @@ PLOT
 416
 1593
 632
-Total  Manpower
+Average Manpower
 NIL
 NIL
 0.0
 500.0
 0.0
-10000.0
+1000.0
 false
 true
 "" ""
 PENS
-"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot sum [Manpower] of unions ]"
-"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot sum [Manpower] of confeds ]"
+"Union" 1.0 0 -14730904 true "" "if any? unions\n[ plot mean [Manpower] of unions ]"
+"Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [Manpower] of confeds ]"
 
 MONITOR
 1236
@@ -1050,6 +1057,21 @@ Sum  [isAtPrep] of unions
 17
 1
 11
+
+SLIDER
+16
+135
+188
+168
+mapSize
+mapSize
+30
+100
+55.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1286,6 +1308,26 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person soldier
+false
+0
+Rectangle -7500403 true true 127 79 172 94
+Polygon -10899396 true false 105 90 60 195 90 210 135 105
+Polygon -10899396 true false 195 90 240 195 210 210 165 105
+Circle -7500403 true true 110 5 80
+Polygon -10899396 true false 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -6459832 true false 120 90 105 90 180 195 180 165
+Line -6459832 false 109 105 139 105
+Line -6459832 false 122 125 151 117
+Line -6459832 false 137 143 159 134
+Line -6459832 false 158 179 181 158
+Line -6459832 false 146 160 169 146
+Rectangle -6459832 true false 120 193 180 201
+Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
+Polygon -16777216 true false 183 90 240 15 247 22 193 90
+Rectangle -6459832 true false 114 187 128 208
+Rectangle -6459832 true false 177 187 191 208
 
 plant
 false
