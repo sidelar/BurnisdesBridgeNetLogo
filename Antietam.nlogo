@@ -464,7 +464,7 @@ end
 
 
 to check-turtle-status
-  ask unions[
+  ask unions [
     ifelse manpower < ( RoutLimit / 100 * InitalManpower ) [
       set IsInRout  1
       set targetPatch UnionRetreatPatch
@@ -474,6 +474,31 @@ to check-turtle-status
       ifelse energy < RetreatEnergyLimit[
         set IsInRetreat 1
        set targetPatch UnionRetreatPatch
+      ]
+      [
+        if IsInRetreat  = 1
+        [
+          set IsInRetreat  0
+          set targetPatch nobody
+          set needNewTarget 1
+        ]
+
+
+
+      ]
+    ]
+  ]
+
+    ask confeds [
+    ifelse manpower < ( RoutLimit / 100 * InitalManpower ) [
+      set IsInRout  1
+      set targetPatch ConfedRetreatPatch
+      set A*Path false
+  ]
+    [
+      ifelse energy < RetreatEnergyLimit[
+        set IsInRetreat 1
+       set targetPatch ConfedRetreatPatch
       ]
       [
         if IsInRetreat  = 1
@@ -540,6 +565,69 @@ to move-turtles
 end
 
 to fight-turtles
+  manpower-damage
+ ;; enemy-target
+ ;; enemy-target-distance
+end
+
+to manpower-damage
+;; Do we need a staggered start like this? Give it a tick or two to get set up before we start "firing"?
+  if ticks >= 2 [
+    ask unions [
+        ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
+
+
+        let enemy-target min-one-of confeds [distance myself]
+
+        let enemy-target-distance distance enemy-target
+
+
+        ;;Struggling here to apply the damage to the enemy-target turtle...
+        let manpower-reduction (random 100 / abs enemy-target-distance)
+
+        ask enemy-target [
+           set manpower (manpower - (manpower-reduction ))
+
+           set energy (energy - (manpower-reduction * (random 2 )))
+        ]
+
+
+        ]
+
+    ask confeds [
+        ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
+
+
+        let enemy-target min-one-of unions [distance myself]
+
+        let enemy-target-distance distance enemy-target
+
+
+        ;;Struggling here to apply the damage to the enemy-target turtle...
+        let manpower-reduction (random 100 / abs enemy-target-distance)
+
+        ask enemy-target [
+           set manpower (manpower - (manpower-reduction ))
+
+           set energy (energy - (manpower-reduction * (random 2 )))
+        ]
+
+
+        ]
+
+
+
+;; Do the same for the CSA
+      ;ask confeds [
+        ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
+       ; set enemy-target min-one-of any? unions [distance myself]
+        ;set enemy-target-distance distance enemy-target
+        ;;Struggling here to apply the damage to the enemy-target turtle...
+        ;let manpower-reduction (random 100 / abs enemy-target-distance)
+        ;set manpower (manpower - (manpower-reduction ))
+        ;set energy (energy - (manpower-reduction * (random 2 ))
+      ;]
+  ]
 
 end
 
@@ -942,7 +1030,7 @@ EnergyRecovery
 EnergyRecovery
 0
 100
-25.0
+15.0
 1
 1
 NIL
