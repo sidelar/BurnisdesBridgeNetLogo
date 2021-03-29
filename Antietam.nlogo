@@ -1,4 +1,4 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower priorTarget IsBridgeDefenese]
 breed [unions union]
 breed [confeds confed]
 globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount IsUnionWin IsConfedWin
@@ -210,6 +210,7 @@ to setup-turtles
     set InitalManpower manpower
     set isCreek 0
     move-to one-of initalUnionPoints
+
     ;;let remove-index random length initalUnionPoints
     ;;set ycor item remove-index init-union-y
     ;;set init-union-y remove-item remove-index init-union-y
@@ -279,7 +280,7 @@ to setup-turtles
     ;;let tarpatch patch target-x target-y
     ;;set targetPatch tarpatch
 
-    set targetPatch nobody
+    set targetPatch patch-here
 
 
 
@@ -293,6 +294,7 @@ to setup-turtles
     set energy 100
     set manpower 500
      set InitalManpower manpower
+      set IsBridgeDefenese false
     move-to one-of initalConfedPoints with [not any? turtles-here]
 
 
@@ -306,8 +308,8 @@ to setup-turtles
     set energy 100
     set manpower 500
      set InitalManpower manpower
-    move-to patch 7 12
-
+    move-to patch 8 13
+    set IsBridgeDefenese true
 
     let tarpatch patch-here
     set targetPatch tarpatch
@@ -327,10 +329,11 @@ to create-reinforcements
     [-34 26] [-34 22] [-34 18] [-34 14]
     [-34 10]  [-34 6]
   ]
-   create-confeds 4 [
+   create-confeds 3 [
     set energy 50
     set manpower 500
      set InitalManpower manpower
+      set IsBridgeDefenese false
 
 
     move-to ConfedRetreatPatch
@@ -378,20 +381,7 @@ to go
     create-reinforcements
   ]
   ;;test retreat
-  ask union 2
-  [
-    set energy energy - 20
-    if ticks > 30
-    [
-      set energy 100
-    ]
-  ]
 
-  ;;test rout
-    ask union 5
-  [
-    set manpower manpower - 5
-  ]
 
   tick
 end
@@ -440,7 +430,7 @@ to check-after-move
   [
     ask unions
     [
-      if targetPatch = nobody
+      if targetPatch = patch-here
       [
           set targetPatch  min-one-of (patches with [UnionPreperationPatch = 1]) [distance myself]
       ]
@@ -471,16 +461,19 @@ to check-turtle-status
       set A*Path false
   ]
     [
-      ifelse energy < RetreatEnergyLimit[
+      ifelse energy < RetreatEnergyLimit and IsInRetreat = 0 [
         set IsInRetreat 1
+
+        set priorTarget targetPatch
        set targetPatch UnionRetreatPatch
+        set A*Path false
       ]
       [
-        if IsInRetreat  = 1
+        if IsInRetreat  = 1 and energy > 2 * RetreatEnergyLimit
         [
           set IsInRetreat  0
-          set targetPatch nobody
-          set needNewTarget 1
+          set targetPatch priorTarget
+          set A*Path false
         ]
 
 
@@ -496,16 +489,24 @@ to check-turtle-status
       set A*Path false
   ]
     [
-      ifelse energy < RetreatEnergyLimit[
+      ifelse energy < RetreatEnergyLimit and IsInRetreat = 0 [
         set IsInRetreat 1
+         set priorTarget targetPatch
        set targetPatch ConfedRetreatPatch
+         set A*Path false
       ]
       [
-        if IsInRetreat  = 1
+        if IsInRetreat  = 1 and energy > 2 * RetreatEnergyLimit
         [
           set IsInRetreat  0
-          set targetPatch nobody
-          set needNewTarget 1
+          set targetPatch priorTarget
+           set A*Path false
+
+          if IsBridgeDefenese and IsBridgeCaptured = 1
+          [
+            set  targetPatch patch -34 18
+          ]
+
         ]
 
 
@@ -576,59 +577,107 @@ to manpower-damage
     ask unions [
         ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
 
+      let enemy-target-distance2 1000
+      let enemy-target-distance 1000
 
-        let enemy-target min-one-of confeds [distance myself]
+       let enemy-target min-one-of confeds with [IsInRout = 0 and IsInRetreat = 0] [distance myself]
+      let enemy-target2 min-one-of confeds with [IsInRout = 0 ] [distance myself]
 
-        let enemy-target-distance distance enemy-target
+  if enemy-target != nobody
+            [set enemy-target-distance distance enemy-target]
+      if enemy-target2 != nobody
+      [ set enemy-target-distance2 distance enemy-target2]
+
+      if enemy-target-distance > 10
+      [
+        set enemy-target enemy-target2
+        set enemy-target-distance enemy-target-distance2
+      ]
 
 
-        ;;Struggling here to apply the damage to the enemy-target turtle...
-        let manpower-reduction (random 100 / abs enemy-target-distance)
+
+
+      if enemy-target-distance <= 10 and IsInRetreat != 1 and isInRout != 1 and [IsWater] of patch-here != 1
+      [
+
+
+
+
+        let manpower-reduction ( 10 / abs enemy-target-distance)
+
+
 
         ask enemy-target [
            set manpower (manpower - (manpower-reduction ))
 
-           set energy (energy - (manpower-reduction * (random 2 )))
+
+
+           set energy (energy - (manpower-reduction * 10))
         ]
 
 
+
+      ]
+
+
+
+
         ]
+
+
 
     ask confeds [
         ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
 
+       let enemy-target-distance2 1000
+      let enemy-target-distance 1000
 
-        let enemy-target min-one-of unions [distance myself]
 
-        let enemy-target-distance distance enemy-target
+      let enemy-target min-one-of unions with [IsInRout = 0 and IsInRetreat = 0] [distance myself]
+      let enemy-target2 min-one-of unions with [IsInRout = 0 ] [distance myself]
+
+      if enemy-target != nobody
+            [set enemy-target-distance distance enemy-target]
+      if enemy-target2 != nobody
+            [ set enemy-target-distance2 distance enemy-target2]
+
+
+
+      if enemy-target-distance > 13
+      [
+        set enemy-target enemy-target2
+        set enemy-target-distance enemy-target-distance2
+      ]
+
+if enemy-target-distance <= 13 and IsInRetreat != 1 and isInRout != 1
+      [
+
+
 
 
         ;;Struggling here to apply the damage to the enemy-target turtle...
-        let manpower-reduction (random 100 / abs enemy-target-distance)
+        let manpower-reduction ( 10 / abs enemy-target-distance)
+        if IsBridgeDefenese
+        [set manpower-reduction manpower-reduction * 3 ]
+
 
         ask enemy-target [
            set manpower (manpower - (manpower-reduction ))
 
-           set energy (energy - (manpower-reduction * (random 2 )))
+
+
+            set energy (energy - (manpower-reduction * 10))
         ]
 
 
+
+      ]
+
+
+
+
         ]
-
-
-
-;; Do the same for the CSA
-      ;ask confeds [
-        ;; Insert the check-creek logic here to see if it can identify the closest enemy and fire
-       ; set enemy-target min-one-of any? unions [distance myself]
-        ;set enemy-target-distance distance enemy-target
-        ;;Struggling here to apply the damage to the enemy-target turtle...
-        ;let manpower-reduction (random 100 / abs enemy-target-distance)
-        ;set manpower (manpower - (manpower-reduction ))
-        ;set energy (energy - (manpower-reduction * (random 2 ))
-      ;]
   ]
-
 end
 
 to walk-towards-goal
@@ -680,7 +729,7 @@ to walk-towards-goal
         [
 
           set intermedDest item 1 A*path
-          ifelse not any? turtles-on intermedDest
+          ifelse not any? turtles-on intermedDest and  (( IsInRetreat = 1) or (  is-union? myself and  not any? confeds in-radius 5) or  ( is-confed? myself and  not any? unions in-radius 5))
           [
             set  A*path remove-item  0 A*path
 
@@ -689,7 +738,7 @@ to walk-towards-goal
           [ set stuckCount stuckCount + 1
             set intermedDest nobody
 
-            if stuckCount > 10
+            if stuckCount > 10 and IsBridgeCaptured
             [set isAtPrep 1]
           ]
         ]
@@ -1030,7 +1079,7 @@ EnergyRecovery
 EnergyRecovery
 0
 100
-15.0
+20.0
 1
 1
 NIL
@@ -1060,7 +1109,7 @@ RetreatEnergyLimit
 RetreatEnergyLimit
 0
 100
-20.0
+30.0
 1
 1
 NIL
@@ -1075,7 +1124,7 @@ DryPatchCost
 DryPatchCost
 0
 100
-10.0
+5.0
 1
 1
 NIL
@@ -1090,7 +1139,7 @@ WetPatchCost
 WetPatchCost
 0
 100
-30.0
+20.0
 1
 1
 NIL
@@ -1116,10 +1165,10 @@ PENS
 "Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot mean [energy] of confeds ]"
 
 PLOT
-1236
-416
-1593
-632
+1295
+409
+1652
+625
 Total  Manpower
 NIL
 NIL
@@ -1142,6 +1191,94 @@ MONITOR
 NIL
 Sum  [isAtPrep] of unions
 17
+1
+11
+
+MONITOR
+977
+41
+1087
+86
+NIL
+IsBridgeCaptured
+17
+1
+11
+
+MONITOR
+982
+101
+1063
+146
+NIL
+IsBattleWon
+17
+1
+11
+
+MONITOR
+992
+183
+1067
+228
+NIL
+IsUnionWin
+17
+1
+11
+
+MONITOR
+985
+266
+1070
+311
+NIL
+IsConfedWin
+17
+1
+11
+
+MONITOR
+982
+339
+1125
+384
+Union Manpower 
+sum [Manpower] of unions
+0
+1
+11
+
+MONITOR
+985
+401
+1129
+446
+Confederate Manpower
+sum [Manpower] of confeds
+0
+1
+11
+
+MONITOR
+1139
+339
+1291
+384
+Union Casualties
+sum [InitalManpower - Manpower] of unions
+0
+1
+11
+
+MONITOR
+1143
+404
+1286
+449
+Confederate Casualties
+sum [InitalManpower - Manpower] of confeds
+0
 1
 11
 
