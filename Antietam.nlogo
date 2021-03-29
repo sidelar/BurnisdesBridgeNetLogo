@@ -1,4 +1,4 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower priorTarget IsBridgeDefenese]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower priorTarget IsBridgeDefenese UnitEnergyRecovery]
 breed [unions union]
 breed [confeds confed]
 globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount IsUnionWin IsConfedWin
@@ -209,6 +209,7 @@ to setup-turtles
     set manpower 1000
     set InitalManpower manpower
     set isCreek 0
+    set UnitEnergyRecovery EnergyRecovery
     move-to one-of initalUnionPoints
 
     ;;let remove-index random length initalUnionPoints
@@ -235,6 +236,7 @@ to setup-turtles
     set manpower 1000
      set InitalManpower manpower
     set isCreek 1
+     set UnitEnergyRecovery EnergyRecovery
 
 
 
@@ -265,6 +267,7 @@ to setup-turtles
     set manpower 1000
      set InitalManpower manpower
     set isCreek 0
+     set UnitEnergyRecovery EnergyRecovery
 
     move-to one-of initalUnionPoints with [not any? turtles-here]
     ;;let remove-index random length init-union-y
@@ -296,7 +299,7 @@ to setup-turtles
      set InitalManpower manpower
       set IsBridgeDefenese false
     move-to one-of initalConfedPoints with [not any? turtles-here]
-
+    set UnitEnergyRecovery EnergyRecovery
 
     let tarpatch patch-here
     set targetPatch tarpatch
@@ -310,7 +313,7 @@ to setup-turtles
      set InitalManpower manpower
     move-to patch 8 13
     set IsBridgeDefenese true
-
+    set UnitEnergyRecovery EnergyRecovery
     let tarpatch patch-here
     set targetPatch tarpatch
   ]
@@ -334,7 +337,7 @@ to create-reinforcements
     set manpower 500
      set InitalManpower manpower
       set IsBridgeDefenese false
-
+     set UnitEnergyRecovery EnergyRecovery / 2
 
     move-to ConfedRetreatPatch
 
@@ -529,6 +532,7 @@ to recover-turtles
         set energy energy + WetEnergyRecovery
       ]
       [
+
         set energy energy + EnergyRecovery
       ]
 
@@ -603,7 +607,7 @@ to manpower-damage
 
 
 
-        let manpower-reduction ( 10 / abs enemy-target-distance)
+        let manpower-reduction ( 5 / abs enemy-target-distance)
 
 
 
@@ -612,7 +616,9 @@ to manpower-damage
 
 
 
-           set energy (energy - (manpower-reduction * 10))
+           set energy (energy - ((manpower-reduction ) * 3 ) - 20 * (1 - manpower / initalManpower))
+
+
         ]
 
 
@@ -656,9 +662,9 @@ if enemy-target-distance <= 13 and IsInRetreat != 1 and isInRout != 1
 
 
         ;;Struggling here to apply the damage to the enemy-target turtle...
-        let manpower-reduction ( 10 / abs enemy-target-distance)
+        let manpower-reduction ( 5 / abs enemy-target-distance)
         if IsBridgeDefenese
-        [set manpower-reduction manpower-reduction * 3 ]
+        [set manpower-reduction manpower-reduction * 4  ]
 
 
         ask enemy-target [
@@ -666,7 +672,7 @@ if enemy-target-distance <= 13 and IsInRetreat != 1 and isInRout != 1
 
 
 
-            set energy (energy - (manpower-reduction * 10))
+           set energy (energy - ((manpower-reduction ) * 5 ) - 15 * (1 - manpower / initalManpower))
         ]
 
 
@@ -1064,7 +1070,7 @@ WetEnergyRecovery
 WetEnergyRecovery
 0
 100
-10.0
+15.0
 1
 1
 NIL
@@ -1279,6 +1285,17 @@ MONITOR
 Confederate Casualties
 sum [InitalManpower - Manpower] of confeds
 0
+1
+11
+
+MONITOR
+1010
+527
+1145
+572
+NIL
+sum [IsWet] of unions
+17
 1
 11
 
