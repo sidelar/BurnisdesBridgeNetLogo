@@ -1,4 +1,4 @@
-turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower priorTarget IsBridgeDefenese UnitEnergyRecovery]
+turtles-own [energy manpower targetPatch isInRetreat isWet isInRout isAtPrep stuckCount isCreek isBridge isReserve A*path needNewTarget useA* InitalManpower priorTarget IsBridgeDefenese UnitEnergyRecovery interDestCount interDest]
 breed [unions union]
 breed [confeds confed]
 globals [PctReserve UnionRetreatPatch ConfedRetreatPatch AreAllUnionReady IsBridgeCaptured IsBattleWon waitAtPrepCount IsUnionWin IsConfedWin
@@ -152,7 +152,7 @@ ask patches
   ; Generation of random obstacles
 
   ; Se the valid patches (not wall)
-  set p-valids patches with [IsWater != 1 and pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
+  set p-valids patches with [IsWater = 0 and pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
    set p-valids-water patches with [ pxcor !=  max-pxcor and pxcor !=  min-pxcor and  pycor !=  max-pycor and pycor !=  min-pycor ]
 
   ; Create a random start
@@ -196,8 +196,8 @@ to setup-turtles
   ]
 
 
-  set-default-shape unions "person soldier"
-  set-default-shape confeds "person soldier"
+  set-default-shape unions "person union"
+  set-default-shape confeds "person confederate"
 
   let TotalUnion 10
   let totCreek (PctCreek * TotalUnion / 100)
@@ -211,6 +211,8 @@ to setup-turtles
     set isCreek 0
     set UnitEnergyRecovery EnergyRecovery
     move-to one-of initalUnionPoints
+    set InterDest nobody
+    set InterDestCount 0
 
     ;;let remove-index random length initalUnionPoints
     ;;set ycor item remove-index init-union-y
@@ -237,7 +239,8 @@ to setup-turtles
      set InitalManpower manpower
     set isCreek 1
      set UnitEnergyRecovery EnergyRecovery
-
+ set InterDest nobody
+    set InterDestCount 0
 
 
     move-to one-of initalUnionPoints with [not any? turtles-here]
@@ -268,7 +271,8 @@ to setup-turtles
      set InitalManpower manpower
     set isCreek 0
      set UnitEnergyRecovery EnergyRecovery
-
+ set InterDest nobody
+    set InterDestCount 0
     move-to one-of initalUnionPoints with [not any? turtles-here]
     ;;let remove-index random length init-union-y
     ;;set ycor item remove-index init-union-y
@@ -300,7 +304,8 @@ to setup-turtles
       set IsBridgeDefenese false
     move-to one-of initalConfedPoints with [not any? turtles-here]
     set UnitEnergyRecovery EnergyRecovery
-
+ set InterDest nobody
+    set InterDestCount 0
     let tarpatch patch-here
     set targetPatch tarpatch
   ]
@@ -316,11 +321,13 @@ to setup-turtles
     set UnitEnergyRecovery EnergyRecovery
     let tarpatch patch-here
     set targetPatch tarpatch
+     set InterDest nobody
+    set InterDestCount 0
   ]
 
   ask turtles
   [set A*path false
-  set size 2]
+  set size 3]
 
 
 
@@ -340,6 +347,8 @@ to create-reinforcements
      set UnitEnergyRecovery EnergyRecovery / 2
 
     move-to ConfedRetreatPatch
+     set InterDest nobody
+    set InterDestCount 0
 
 
     let tarpatch one-of initalConfedPoints
@@ -407,8 +416,8 @@ to check-after-move
           set needNewTarget 0
           set A*Path false
           set targetPatch  one-of (patches with [UnionPreperationPatch = 1 and not any? turtles-here])
-          print "retargeting blocked turtle"
-          print who
+         ;; print "retargeting blocked turtle"
+          ;;print who
         ]
       ]
 
@@ -448,7 +457,7 @@ to check-after-move
     set AreAllUnionReady 1
     ask unions
     [
-         set targetPatch  min-one-of (patches with [any? confeds-here]) [distance myself]
+      set targetPatch  min-one-of (patches with [any? confeds-here with [IsInRout = 0] ]) [distance myself]
           set needNewTarget 0
           set A*Path false
     ]
@@ -486,10 +495,27 @@ to check-turtle-status
   ]
 
     ask confeds [
+    if IsBridgeCaptured = 1 and IsBridgeDefenese = 1
+    [
+          set IsInRetreat 1
+          set targetPatch ConfedRetreatPatch
+          set A*Path false
+    ]
     ifelse manpower < ( RoutLimit / 100 * InitalManpower ) [
+      ifelse IsBridgeDefenese = 1
+      [
+        if manpower < ( RoutLimit / 100 * InitalManpower / 2 )
+        [
+          set IsInRout  1
+          set targetPatch ConfedRetreatPatch
+          set A*Path false
+        ]
+      ]
+      [
       set IsInRout  1
       set targetPatch ConfedRetreatPatch
-      set A*Path false
+        set A*Path false
+      ]
   ]
     [
       ifelse energy < RetreatEnergyLimit and IsInRetreat = 0 [
@@ -607,7 +633,7 @@ to manpower-damage
 
 
 
-        let manpower-reduction ( 5 / abs enemy-target-distance)
+        let manpower-reduction ( 4 / abs enemy-target-distance)
 
 
 
@@ -662,9 +688,9 @@ if enemy-target-distance <= 13 and IsInRetreat != 1 and isInRout != 1
 
 
         ;;Struggling here to apply the damage to the enemy-target turtle...
-        let manpower-reduction ( 5 / abs enemy-target-distance)
+        let manpower-reduction ( 7 / abs enemy-target-distance)
         if IsBridgeDefenese
-        [set manpower-reduction manpower-reduction * 4  ]
+        [set manpower-reduction manpower-reduction * 3  ]
 
 
         ask enemy-target [
@@ -687,8 +713,10 @@ if enemy-target-distance <= 13 and IsInRetreat != 1 and isInRout != 1
 end
 
 to walk-towards-goal
+ let intermedDest targetPatch
+  ifelse InterDest = nobody
+[
 
-  let intermedDest targetPatch
   if targetPatch != nobody
   [
     ifelse  AreAllUnionReady = 1 or IsInRout = 1  ;; if going through creek just run in a straight line
@@ -705,7 +733,10 @@ to walk-towards-goal
         let valid p-valids with [(not any? turtles-here)]
 
         if IsCreek = 1
-        [ set valid p-valids-water with [(not any? turtles-here)]]
+          [
+          set valid p-valids-water with [(not any? turtles-here)]
+          ]
+
 
         set valid (patch-set here valid)
         carefully [
@@ -765,31 +796,52 @@ to walk-towards-goal
 
 
     ]
+   ]
+  ]
+    [
+       set intermedDest InterDest
+    ]
+
 
     ifelse intermedDest = nobody
     [
 
     ]
     [
-      face intermedDest
+      ;;print intermedDest
+      ;;face intermedDest
 
      ;; move-to patch-ahead 1
 
       set stuckCount 0
-      ifelse [IsWater] of  intermedDest = 1
+      ifelse [IsWater] of  intermedDest = 1 or [IsWater] of patch-here = 1
       [
+       set InterDest intermedDest
+
+       ifelse interdestcount > 3
+       [
+        print "here"
         set energy energy - WetPatchCost
         set isWet 1
         fd .25
+        set InterDest nobody
+           set interDestCount 0
+      ]
+        [
+          set interdestcount interdestcount + 1
+          print interdestcount
+        ]
+
       ]
       [
         set energy energy - DryPatchCost
-         fd 1
+         ;;fd 1
+        move-to intermedDest
       ]
 
 
     ]
-  ]
+
 
 
 
@@ -970,23 +1022,6 @@ GRAPHICS-WINDOW
 ticks
 30.0
 
-BUTTON
-8
-78
-181
-123
-NIL
-NIL
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 TEXTBOX
 14
 36
@@ -998,10 +1033,10 @@ Batle Of Antietam - Burnsides Bridge\n
 1
 
 BUTTON
-44
-179
-107
-212
+17
+70
+80
+103
 NIL
 go\n
 T
@@ -1015,10 +1050,10 @@ NIL
 0
 
 BUTTON
-75
-242
-138
-275
+106
+71
+169
+104
 NIL
 setup
 NIL
@@ -1040,7 +1075,7 @@ PctBridge
 PctBridge
 0
 100
-20.0
+10.0
 1
 1
 NIL
@@ -1055,7 +1090,7 @@ PctCreek
 PctCreek
 0
 100
-0.0
+10.0
 1
 1
 NIL
@@ -1100,7 +1135,7 @@ RoutLimit
 RoutLimit
 0
 100
-25.0
+50.0
 1
 1
 NIL
@@ -1152,10 +1187,10 @@ NIL
 HORIZONTAL
 
 PLOT
-1240
-81
-1593
-293
+1295
+193
+1648
+405
 Average Energy
 ticks
 Energy
@@ -1190,23 +1225,23 @@ PENS
 "Confederacy" 1.0 0 -2674135 true "" "if any? confeds\n[ plot sum [Manpower] of confeds ]"
 
 MONITOR
-1236
-642
-1385
-687
-NIL
+979
+578
+1131
+623
+Num Union Troops Ready
 Sum  [isAtPrep] of unions
 17
 1
 11
 
 MONITOR
-977
-41
-1087
-86
-NIL
+981
+55
+1114
+100
 IsBridgeCaptured
+IsBridgeCaptured = 1
 17
 1
 11
@@ -1223,10 +1258,10 @@ IsBattleWon
 11
 
 MONITOR
-992
-183
-1067
-228
+981
+147
+1056
+192
 NIL
 IsUnionWin
 17
@@ -1234,10 +1269,10 @@ IsUnionWin
 11
 
 MONITOR
-985
-266
-1070
-311
+979
+194
+1064
+239
 NIL
 IsConfedWin
 17
@@ -1245,10 +1280,10 @@ IsConfedWin
 11
 
 MONITOR
-982
-339
-1125
-384
+981
+252
+1124
+297
 Union Manpower 
 sum [Manpower] of unions
 0
@@ -1256,10 +1291,10 @@ sum [Manpower] of unions
 11
 
 MONITOR
-985
-401
-1129
-446
+982
+318
+1126
+363
 Confederate Manpower
 sum [Manpower] of confeds
 0
@@ -1267,10 +1302,10 @@ sum [Manpower] of confeds
 11
 
 MONITOR
-1139
-339
-1291
-384
+1138
+252
+1290
+297
 Union Casualties
 sum [InitalManpower - Manpower] of unions
 0
@@ -1278,10 +1313,10 @@ sum [InitalManpower - Manpower] of unions
 11
 
 MONITOR
-1143
-404
-1286
-449
+1142
+317
+1285
+362
 Confederate Casualties
 sum [InitalManpower - Manpower] of confeds
 0
@@ -1289,12 +1324,67 @@ sum [InitalManpower - Manpower] of confeds
 11
 
 MONITOR
-1010
-527
-1145
-572
-NIL
+977
+531
+1129
+576
+Num Union Troops Wet
 sum [IsWet] of unions
+17
+1
+11
+
+MONITOR
+977
+481
+1136
+526
+Num Union Troops Routing
+sum [IsInRout] of unions
+17
+1
+11
+
+MONITOR
+981
+10
+1087
+55
+Curent Time
+ticks  + 1000
+17
+1
+11
+
+MONITOR
+1137
+479
+1293
+524
+Num Confeds Troops Routing
+sum [IsInRout] of Confeds
+17
+1
+11
+
+MONITOR
+978
+432
+1134
+477
+Num Union Troops Retreating
+sum [IsInRetreat] of unions
+17
+1
+11
+
+MONITOR
+1140
+430
+1289
+475
+Num Confeds Retreating
+Sum [IsInRetreat] of Confeds
 17
 1
 11
@@ -1535,6 +1625,26 @@ Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
 
+person confederate
+false
+0
+Rectangle -955883 true false 127 79 172 94
+Polygon -1 true false 105 90 60 195 90 210 135 105
+Polygon -1 true false 195 90 240 195 210 210 165 105
+Circle -1184463 true false 110 5 80
+Polygon -1 true false 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -7500403 true true 120 90 105 90 180 195 180 165
+Line -6459832 false 109 105 139 105
+Line -6459832 false 122 125 151 117
+Line -5825686 false 137 143 159 134
+Line -6459832 false 158 179 181 158
+Line -6459832 false 146 160 169 146
+Rectangle -7500403 true true 120 193 180 201
+Polygon -1 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
+Polygon -16777216 true false 183 90 240 15 247 22 193 90
+Rectangle -7500403 true true 114 187 128 208
+Rectangle -7500403 true true 177 187 191 208
+
 person soldier
 false
 0
@@ -1554,6 +1664,26 @@ Polygon -6459832 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 
 Polygon -16777216 true false 183 90 240 15 247 22 193 90
 Rectangle -6459832 true false 114 187 128 208
 Rectangle -6459832 true false 177 187 191 208
+
+person union
+false
+0
+Rectangle -955883 true false 127 79 172 94
+Polygon -13345367 true false 105 90 60 195 90 210 135 105
+Polygon -13345367 true false 195 90 240 195 210 210 165 105
+Circle -1184463 true false 110 5 80
+Polygon -13345367 true false 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -7500403 true true 120 90 105 90 180 195 180 165
+Line -6459832 false 109 105 139 105
+Line -6459832 false 122 125 151 117
+Line -5825686 false 137 143 159 134
+Line -6459832 false 158 179 181 158
+Line -6459832 false 146 160 169 146
+Rectangle -7500403 true true 120 193 180 201
+Polygon -13345367 true false 122 4 107 16 102 39 105 53 148 34 192 27 189 17 172 2 145 0
+Polygon -1184463 true false 183 90 240 15 247 22 193 90
+Rectangle -7500403 true true 114 187 128 208
+Rectangle -7500403 true true 177 187 191 208
 
 plant
 false
